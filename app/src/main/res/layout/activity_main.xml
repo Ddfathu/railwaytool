@@ -6,12 +6,10 @@
     android:layout_height="match_parent"
     android:background="#0D1117">
 
-    <!-- Konten Utama -->
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- Top App Bar -->
         <com.google.android.material.appbar.AppBarLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -22,19 +20,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
                 app:navigationIcon="@android:drawable/ic_menu_sort_by_size"
-                app:title="Railway Tool"
+                app:title="Railway Manager"
                 app:titleTextColor="#58A6FF" />
         </com.google.android.material.appbar.AppBarLayout>
 
-        <!-- Area Konten Tab -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginTop="?attr/actionBarSize"
             android:layout_marginBottom="56dp"
-            android:padding="16dp">
+            android:padding="12dp">
 
-            <!-- TAB 1: AUTH & STATUS -->
+            <!-- PANEL 1: AUTH -->
             <ScrollView
                 android:id="@+id/panelAuth"
                 android:layout_width="match_parent"
@@ -62,7 +59,7 @@
                         android:id="@+id/btnLoginBrowserless"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="🌐 Login via Browser (Browserless)"
+                        android:text="🌐 LOGIN VIA BROWSER (BROWSERLESS)"
                         android:backgroundTint="#238636"
                         android:textColor="#FFFFFF"
                         android:layout_marginBottom="10dp" />
@@ -71,7 +68,7 @@
                         android:id="@+id/btnLoginToken"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="🔑 Login Pakai API Token"
+                        android:text="🔑 LOGIN PAKAI API TOKEN"
                         android:backgroundTint="#1F6FEB"
                         android:textColor="#FFFFFF"
                         android:layout_marginBottom="10dp" />
@@ -80,7 +77,7 @@
                         android:id="@+id/btnLoginCli"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="⚡ Fast Auth Trigger"
+                        android:text="⚡ FAST AUTH TRIGGER"
                         android:backgroundTint="#8957E5"
                         android:textColor="#FFFFFF"
                         android:layout_marginBottom="10dp" />
@@ -89,13 +86,13 @@
                         android:id="@+id/btnCheckStatus"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="🔄 Refresh Status (Whoami)"
+                        android:text="🔄 REFRESH STATUS (WHOAMI)"
                         android:backgroundTint="#30363D"
                         android:textColor="#C9D1D9" />
                 </LinearLayout>
             </ScrollView>
 
-            <!-- TAB 2: DEPLOYMENT -->
+            <!-- PANEL 2: DEPLOY -->
             <ScrollView
                 android:id="@+id/panelDeploy"
                 android:layout_width="match_parent"
@@ -164,7 +161,7 @@
                 </LinearLayout>
             </ScrollView>
 
-            <!-- TAB 3: MANAGEMENT -->
+            <!-- PANEL 3: MANAGE -->
             <ScrollView
                 android:id="@+id/panelManage"
                 android:layout_width="match_parent"
@@ -222,9 +219,116 @@
                 </LinearLayout>
             </ScrollView>
 
+            <!-- PANEL 4: TERMINAL (LIVE TERMINAL ALA TERMUX) -->
+            <LinearLayout
+                android:id="@+id/panelTerminal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none"
+                    android:layout_marginBottom="6dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnTermLogin"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:text="railway login"
+                            android:textSize="11sp"
+                            android:backgroundTint="#238636"
+                            android:layout_marginEnd="6dp" />
+
+                        <Button
+                            android:id="@+id/btnTermWhoami"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:text="whoami"
+                            android:textSize="11sp"
+                            android:backgroundTint="#1F6FEB"
+                            android:layout_marginEnd="6dp" />
+
+                        <Button
+                            android:id="@+id/btnTermStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:text="status"
+                            android:textSize="11sp"
+                            android:backgroundTint="#8957E5"
+                            android:layout_marginEnd="6dp" />
+
+                        <Button
+                            android:id="@+id/btnTermClear"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:text="clear"
+                            android:textSize="11sp"
+                            android:backgroundTint="#30363D" />
+                    </LinearLayout>
+                </HorizontalScrollView>
+
+                <ScrollView
+                    android:id="@+id/svTerminal"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:background="#000000"
+                    android:padding="8dp">
+
+                    <TextView
+                        android:id="@+id/tvTerminalOutput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:textColor="#39FF14"
+                        android:textSize="12sp"
+                        android:textIsSelectable="true"
+                        android:text="⚡ Railway Live Terminal\nKetik perintah CLI di bawah atau tekan shortcut.\nrailway:~$ " />
+                </ScrollView>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="#161B22"
+                    android:padding="4dp"
+                    android:layout_marginTop="4dp">
+
+                    <EditText
+                        android:id="@+id/etTerminalInput"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:background="@null"
+                        android:hint="contoh: curl --version"
+                        android:textColor="#C9D1D9"
+                        android:textColorHint="#6E7681"
+                        android:fontFamily="monospace"
+                        android:textSize="12sp"
+                        android:paddingStart="8dp"
+                        android:singleLine="true" />
+
+                    <Button
+                        android:id="@+id/btnSendTerminal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="38dp"
+                        android:text="Kirim"
+                        android:textSize="12sp"
+                        android:backgroundTint="#1F6FEB" />
+                </LinearLayout>
+
+            </LinearLayout>
+
         </FrameLayout>
 
-        <!-- Bottom Navigation Bar -->
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNavigation"
             android:layout_width="match_parent"
@@ -233,11 +337,11 @@
             android:background="#161B22"
             app:itemIconTint="#C9D1D9"
             app:itemTextColor="#C9D1D9"
+            app:labelVisibilityMode="labeled"
             app:menu="@menu/bottom_nav_menu" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    <!-- Side Navigation Drawer -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navView"
         android:layout_width="wrap_content"
