@@ -31,7 +31,6 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.navigation.NavigationView
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -88,7 +87,6 @@ class MainActivity : AppCompatActivity() {
         svTerminal = findViewById(R.id.svTerminal)
         etInput = findViewById(R.id.etTerminalInput)
 
-        // Fix Keyboard Popup saat input disentuh
         etInput.setOnClickListener {
             etInput.requestFocus()
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -115,22 +113,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun switchTab(tabId: Int) {
-        val panelAuth = findViewById<View>(R.id.panelAuth)
-        val panelDeploy = findViewById<View>(R.id.panelDeploy)
-        val panelManage = findViewById<View>(R.id.panelManage)
-        val panelTerminal = findViewById<View>(R.id.panelTerminal)
-
-        panelAuth.visibility = View.GONE
-        panelDeploy.visibility = View.GONE
-        panelManage.visibility = View.GONE
-        panelTerminal.visibility = View.GONE
-
-        when (tabId) {
-            R.id.nav_auth -> panelAuth.visibility = View.VISIBLE
-            R.id.nav_deploy -> panelDeploy.visibility = View.VISIBLE
-            R.id.nav_manage -> panelManage.visibility = View.VISIBLE
-            R.id.nav_terminal -> panelTerminal.visibility = View.VISIBLE
-        }
+        findViewById<View>(R.id.panelAuth).visibility = if (tabId == R.id.nav_auth) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.panelDeploy).visibility = if (tabId == R.id.nav_deploy) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.panelManage).visibility = if (tabId == R.id.nav_manage) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.panelTerminal).visibility = if (tabId == R.id.nav_terminal) View.VISIBLE else View.GONE
     }
 
     private fun setupBottomNavigation() {
@@ -146,7 +132,7 @@ class MainActivity : AppCompatActivity() {
             drawerLayout.closeDrawer(GravityCompat.START)
             when (item.itemId) {
                 R.id.drawer_status -> checkStatus()
-                R.id.drawer_login_browser -> startNativeRailwayLogin()
+                R.id.drawer_login_browser -> executeCliBrowserlessLogin()
                 R.id.drawer_login_token -> showTokenInputDialog()
                 R.id.drawer_terminal -> {
                     bottomNav.selectedItemId = R.id.nav_terminal
@@ -166,9 +152,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupButtonActions() {
-        findViewById<Button>(R.id.btnLoginBrowserless).setOnClickListener { startNativeRailwayLogin() }
+        findViewById<Button>(R.id.btnLoginBrowserless).setOnClickListener { executeCliBrowserlessLogin() }
         findViewById<Button>(R.id.btnLoginToken).setOnClickListener { showTokenInputDialog() }
-        findViewById<Button>(R.id.btnLoginCli).setOnClickListener { startNativeRailwayLogin() }
+        findViewById<Button>(R.id.btnLoginCli).setOnClickListener { executeCliBrowserlessLogin() }
         findViewById<Button>(R.id.btnCheckStatus).setOnClickListener { checkStatus() }
 
         findViewById<Button>(R.id.btnSelectFile).setOnClickListener { selectZipLauncher.launch("application/zip") }
@@ -189,6 +175,28 @@ class MainActivity : AppCompatActivity() {
             val clean = text.replace(Regex("\u001B\\[[;?0-9]*[a-zA-Z]"), "")
             tvTerminal.append(clean)
             svTerminal.post { svTerminal.fullScroll(ScrollView.FOCUS_DOWN) }
+
+            // Deteksi kode aktivasi (misal: ABCD-1234 atau 8 karakter alfanumerik)
+            val codeMatch = Regex("""\b([A-Z0-9]{4}-[A-Z0-9]{4})\b""").find(clean)
+            if (codeMatch != null) {
+                val code = codeMatch.value
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("Railway Code", code))
+                Toast.makeText(this, "Kode $code disalin!", Toast.LENGTH_SHORT).show()
+            }
+
+            // Buka link aktivasi otomatis jika muncul URL aktivasi
+            if (clean.contains("railway.com/activate") || clean.contains("activate")) {
+                val urlMatch = Regex("""https?://[^\s"'<>]+""").find(clean)
+                val targetUrl = urlMatch?.value ?: "https://railway.com/activate"
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    })
+                } catch (_: Exception) {
+                    CustomTabsIntent.Builder().build().launchUrl(this, Uri.parse(targetUrl))
+                }
+            }
         }
     }
 
@@ -204,13 +212,21 @@ class MainActivity : AppCompatActivity() {
         val jqBin = File(libDir, "libjq.so")
         val busyboxBin = File(libDir, "libbusybox.so")
 
+        // Perintah sistem Android native langsung ke /system/bin
+        val systemBin = File("/system/bin", cmd)
+        if (cmd == "ping" && systemBin.exists()) {
+            return listOf(systemBin.absolutePath) + args
+        }
+
         return when (cmd) {
             "railway" -> listOf(railwayBin.absolutePath) + args
             "curl" -> listOf(curlBin.absolutePath) + args
             "jq" -> listOf(jqBin.absolutePath) + args
             "busybox" -> listOf(busyboxBin.absolutePath) + args
             else -> {
-                if (busyboxBin.exists()) {
+                if (systemBin.exists()) {
+                    listOf(systemBin.absolutePath) + args
+                } else if (busyboxBin.exists()) {
                     listOf(busyboxBin.absolutePath, cmd) + args
                 } else {
                     listOf(cmd) + args
@@ -227,7 +243,7 @@ class MainActivity : AppCompatActivity() {
 
                 val exeFile = File(cmdArgs[0])
                 if (!exeFile.exists() && cmdArgs[0].startsWith("/")) {
-                    appendTerminal("\n[ERROR] File biner ${exeFile.name} tidak ditemukan!\nrailway:~$ ")
+                    appendTerminal("\n[ERROR] Command '${cmdArgs[0]}' tidak ditemukan!\nrailway:~$ ")
                     return@launch
                 }
 
@@ -240,6 +256,10 @@ class MainActivity : AppCompatActivity() {
                 env["TMPDIR"] = cacheDir.absolutePath
                 env["TERM"] = "xterm-256color"
                 env["LD_LIBRARY_PATH"] = "${libDir.absolutePath}:/system/lib64"
+                
+                // Set DNS nameserver default untuk biner libc
+                env["RES_OPTIONS"] = "nameserver:8.8.8.8 nameserver:1.1.1.1"
+
                 pb.redirectErrorStream(true)
 
                 val process = pb.start()
@@ -267,7 +287,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupTerminalActions() {
-        findViewById<Button>(R.id.btnTermLogin).setOnClickListener { startNativeRailwayLogin() }
+        findViewById<Button>(R.id.btnTermLogin).setOnClickListener { executeCliBrowserlessLogin() }
         findViewById<Button>(R.id.btnTermWhoami).setOnClickListener { runTerminalCommand("railway whoami") }
         findViewById<Button>(R.id.btnTermStatus).setOnClickListener { runTerminalCommand("railway status") }
         findViewById<Button>(R.id.btnTermClear).setOnClickListener { tvTerminal.text = "railway:~$ " }
@@ -290,97 +310,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- LOGIN ENGINE 100% BEBAS DNS ERROR (LANGSUNG VIA JAVA SOCKET) ---
-    private fun startNativeRailwayLogin() {
+    private fun executeCliBrowserlessLogin() {
         bottomNav.selectedItemId = R.id.nav_terminal
         switchTab(R.id.nav_terminal)
-
-        appendTerminal("\nrailway:~$ railway login\n")
-        appendTerminal("Menghubungkan ke server Railway...\n")
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val req = Request.Builder()
-                    .url("https://backboard.railway.com/oauth/device/auth")
-                    .post("{}".toRequestBody("application/json".toMediaType()))
-                    .build()
-
-                val res = httpClient.newCall(req).execute()
-                val body = res.body?.string() ?: ""
-
-                if (!res.isSuccessful || body.isEmpty()) {
-                    appendTerminal("[ERROR] Gagal menghubungi Railway HTTP: ${res.code}\nrailway:~$ ")
-                    return@launch
-                }
-
-                val json = JSONObject(body)
-                val deviceCode = json.getString("device_code")
-                val userCode = json.getString("user_code")
-                val verifyUrl = "https://railway.com/activate"
-
-                appendTerminal("\n=========================================\n")
-                appendTerminal("🔑 PAIRING CODE : $userCode\n")
-                appendTerminal("🔗 Buka Browser  : $verifyUrl\n")
-                appendTerminal("=========================================\n")
-                appendTerminal("Kode berhasil disalin! Membuka browser...\n")
-
-                withContext(Dispatchers.Main) {
-                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Railway Code", userCode))
-                    Toast.makeText(this@MainActivity, "Kode $userCode disalin ke clipboard!", Toast.LENGTH_LONG).show()
-
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(verifyUrl)).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    try {
-                        startActivity(intent)
-                    } catch (_: Exception) {
-                        CustomTabsIntent.Builder().build().launchUrl(this@MainActivity, Uri.parse(verifyUrl))
-                    }
-                }
-
-                appendTerminal("Menunggu Anda klik Authorize di browser...\n")
-
-                var accessToken: String? = null
-                for (i in 0..60) {
-                    delay(2000)
-                    val pollPayload = JSONObject().apply { put("device_code", deviceCode) }
-                    val pollReq = Request.Builder()
-                        .url("https://backboard.railway.com/oauth/device/token")
-                        .post(pollPayload.toString().toRequestBody("application/json".toMediaType()))
-                        .build()
-
-                    val pollRes = httpClient.newCall(pollReq).execute()
-                    val pollBody = pollRes.body?.string() ?: ""
-
-                    if (pollRes.isSuccessful) {
-                        val pollJson = JSONObject(pollBody)
-                        val tok = pollJson.optString("access_token")
-                        if (tok.isNotEmpty()) {
-                            accessToken = tok
-                            break
-                        }
-                    }
-                }
-
-                if (!accessToken.isNullOrEmpty()) {
-                    // Simpan token ke file config yang dibaca CLI Railway
-                    val confDir = File(filesDir, ".railway").apply { mkdirs() }
-                    File(confDir, "config.json").writeText("""{"user":{"accessToken":"$accessToken"}}""")
-
-                    appendTerminal("\n[SUCCESS] Login Berhasil! Akun terhubung.\nrailway:~$ ")
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MainActivity, "Login Sukses!", Toast.LENGTH_SHORT).show()
-                        checkStatus()
-                    }
-                } else {
-                    appendTerminal("\n[TIMEOUT] Waktu otorisasi habis. Silakan klik Login lagi.\nrailway:~$ ")
-                }
-
-            } catch (e: Exception) {
-                appendTerminal("\n[ERROR] ${e.message}\nrailway:~$ ")
-            }
-        }
+        // Gunakan login browserless CLI resmi
+        runTerminalCommand("railway login --browserless")
     }
 
     private fun checkAndRequestStoragePermissions() {
@@ -442,7 +376,7 @@ class MainActivity : AppCompatActivity() {
 
         val token = getToken()
         if (token.isNullOrEmpty()) {
-            tvStatus.text = "🔴 Belum login ke Railway.\nSilakan gunakan menu Login."
+            tvStatus.text = "🔴 Belum login ke Railway.\nSilakan gunakan menu Login atau masukkan Token."
             return
         }
 
@@ -455,7 +389,7 @@ class MainActivity : AppCompatActivity() {
                 val name = me.optString("name", "User")
                 tvStatus.text = "🟢 Terhubung ke Railway!\nAkun: $name ($email)"
             } else {
-                tvStatus.text = "🔴 Token tidak valid/kadaluarsa. Silakan login ulang."
+                tvStatus.text = "🔴 Token kadaluarsa atau tidak valid."
             }
         }
     }
