@@ -35,7 +35,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
-import java.util.zip.GZIPInputStream
 import java.util.zip.ZipInputStream
 
 class MainActivity : AppCompatActivity() {
@@ -79,6 +78,11 @@ class MainActivity : AppCompatActivity() {
         setupButtonActions()
 
         checkStatus()
+    }
+
+    private fun setupRailwayBinary() {
+        // Ambil biner langsung dari folder native library sistem Android
+        railwayBin = File(applicationInfo.nativeLibraryDir, "librailway.so")
     }
 
     private fun setupBottomNavigation() {
@@ -190,8 +194,11 @@ class MainActivity : AppCompatActivity() {
     private fun runCliCommand(vararg args: String, workDir: File = workspaceDir, onFinished: (Int, String) -> Unit) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                if (!railwayBin.canExecute()) {
-                    Runtime.getRuntime().exec("chmod 755 ${railwayBin.absolutePath}").waitFor()
+                if (!railwayBin.exists()) {
+                    withContext(Dispatchers.Main) {
+                        onFinished(-1, "Binary librailway.so tidak ditemukan di ${railwayBin.absolutePath}")
+                    }
+                    return@launch
                 }
 
                 val pb = ProcessBuilder(railwayBin.absolutePath, *args)
@@ -238,7 +245,7 @@ class MainActivity : AppCompatActivity() {
                     tvStatus.text = "🟢 Akun: ${out.trim()}\n\n📊 Status:\n${statusOut.trim()}"
                 }
             } else {
-                tvStatus.text = "🔴 Belum login ke Railway."
+                tvStatus.text = "🔴 Belum login ke Railway.\nSilakan gunakan menu Login."
             }
         }
     }
@@ -249,10 +256,6 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                if (!railwayBin.canExecute()) {
-                    Runtime.getRuntime().exec("chmod 755 ${railwayBin.absolutePath}").waitFor()
-                }
-
                 val pb = ProcessBuilder(railwayBin.absolutePath, "login", "--browserless")
                 pb.environment()["HOME"] = filesDir.absolutePath
                 pb.environment()["TMPDIR"] = cacheDir.absolutePath
@@ -286,6 +289,10 @@ class MainActivity : AppCompatActivity() {
                         } else {
                             tvStatus.text = "Otorisasi dibatalkan."
                         }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        tvStatus.text = "Gagal mengambil link login dari CLI."
                     }
                 }
             } catch (e: Exception) {
@@ -398,10 +405,6 @@ class MainActivity : AppCompatActivity() {
                 workspaceDir.deleteRecursively()
                 workspaceDir.mkdirs()
                 unzip(zip, workspaceDir)
-
-                if (!railwayBin.canExecute()) {
-                    Runtime.getRuntime().exec("chmod 755 ${railwayBin.absolutePath}").waitFor()
-                }
 
                 val pb = ProcessBuilder(railwayBin.absolutePath, "up", "--detach")
                 pb.directory(workspaceDir)
@@ -617,35 +620,6 @@ class MainActivity : AppCompatActivity() {
                 .setPositiveButton("Tutup", null)
                 .show()
         }
-    }
-
-    private fun setupRailwayBinary() {
-        railwayBin = File(filesDir, "railway")
-        if (!railwayBin.exists() || railwayBin.length() == 0L) {
-            try {
-                if (assets.list("")?.contains("railway.gz") == true) {
-                    assets.open("railway.gz").use { input ->
-                        GZIPInputStream(input).use { gzipIn ->
-                            FileOutputStream(railwayBin).use { output ->
-                                gzipIn.copyTo(output)
-                            }
-                        }
-                    }
-                } else if (assets.list("")?.contains("railway") == true) {
-                    assets.open("railway").use { input ->
-                        FileOutputStream(railwayBin).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-        try {
-            railwayBin.setExecutable(true, false)
-            Runtime.getRuntime().exec("chmod 755 ${railwayBin.absolutePath}").waitFor()
-        } catch (_: Exception) {}
     }
 
     private fun unzip(zipFile: File, targetDirectory: File) {
