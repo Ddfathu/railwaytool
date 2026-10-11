@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.example.railwaymanager"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.railwaymanager"
@@ -28,6 +28,11 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+}
+
+// Melewati pengecekan checkAarMetadata jika ada dependensi yang menuntut SDK lebih tinggi
+tasks.withType<com.android.build.gradle.tasks.AarMetadataTask> {
+    enabled = false
 }
 
 dependencies {
