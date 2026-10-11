@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_auth"
+        android:icon="@android:drawable/ic_lock_idle_lock"
+        android:title="Auth" />
+    <item
+        android:id="@+id/nav_deploy"
+        android:icon="@android:drawable/ic_menu_upload"
+        android:title="Deploy" />
+    <item
+        android:id="@+id/nav_manage"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:title="Manage" />
+</menu>

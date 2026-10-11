@@ -1,0 +1,23 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background Bulat Gelap -->
+    <path
+        android:fillColor="#0D1117"
+        android:pathData="M54,0C24.18,0 0,24.18 0,54s24.18,54 54,54 54,-24.18 54,-54S83.82,0 54,0z"/>
+    <!-- Lingkaran Aksen Ungu Railway -->
+    <path
+        android:strokeColor="#8957E5"
+        android:strokeWidth="3"
+        android:pathData="M54,4C26.39,4 4,26.39 4,54s22.39,50 50,50 50,-22.39 50,-50S81.61,4 54,4z"/>
+    <!-- Huruf R -->
+    <path
+        android:fillColor="#58A6FF"
+        android:pathData="M28,34 L44,34 C50,34 54,37 54,43 C54,48 50,51 44,52 L54,74 L44,74 L35.5,55 L35.5,74 L28,74 Z M35.5,41 L35.5,47 L43,47 C45.5,47 47,45.5 47,44 C47,42.5 45.5,41 43,41 Z"/>
+    <!-- Huruf y -->
+    <path
+        android:fillColor="#238636"
+        android:pathData="M56,43 L63,43 L70,61 L77,43 L84,43 L73,70 C70,77 66,80 60,80 L56,80 L56,74 L59,74 C62,74 64,72 66,67 L56,43 Z"/>
+</vector>

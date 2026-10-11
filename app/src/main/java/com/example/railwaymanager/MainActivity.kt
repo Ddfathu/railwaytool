@@ -1,16 +1,30 @@
 package com.example.railwaymanager
 
+import android.Manifest
 import android.app.AlertDialog
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.navigation.NavigationView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,6 +41,7 @@ import java.util.zip.ZipInputStream
 class MainActivity : AppCompatActivity() {
 
     private lateinit var railwayBin: File
+    private lateinit var drawerLayout: DrawerLayout
     private var selectedZipFile: File? = null
     private val httpClient = OkHttpClient()
     private val graphqlUrl = "https://backboard.railway.com/graphql/v2"
@@ -50,56 +65,116 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        checkAndRequestStoragePermissions()
         setupRailwayBinary()
 
-        val btnLoginBrowserless = findViewById<Button>(R.id.btnLoginBrowserless)
-        val btnLoginToken = findViewById<Button>(R.id.btnLoginToken)
-        val btnLoginCli = findViewById<Button>(R.id.btnLoginCli)
-        val btnCloneRepo = findViewById<Button>(R.id.btnCloneRepo)
-        val btnListAndLink = findViewById<Button>(R.id.btnListAndLink)
-        val btnUnlinkClean = findViewById<Button>(R.id.btnUnlinkClean)
-        val btnSelectFile = findViewById<Button>(R.id.btnSelectFile)
-        val btnDeploy = findViewById<Button>(R.id.btnDeploy)
-        val btnChangeRegion = findViewById<Button>(R.id.btnChangeRegion)
-        val btnHttpDomain = findViewById<Button>(R.id.btnHttpDomain)
-        val btnTcpProxy = findViewById<Button>(R.id.btnTcpProxy)
-        val btnEnvVars = findViewById<Button>(R.id.btnEnvVars)
-        val btnLogs = findViewById<Button>(R.id.btnLogs)
+        drawerLayout = findViewById(R.id.drawerLayout)
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        toolbar.setNavigationOnClickListener {
+            drawerLayout.openDrawer(GravityCompat.START)
+        }
+
+        setupBottomNavigation()
+        setupDrawerNavigation()
+        setupButtonActions()
 
         checkStatus()
+    }
 
-        // [2] 3 Mode Login
-        btnLoginBrowserless.setOnClickListener { runBrowserLogin() }
-        btnLoginToken.setOnClickListener { showTokenInputDialog() }
-        btnLoginCli.setOnClickListener { runBrowserLogin() }
+    private fun setupBottomNavigation() {
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
+        val panelAuth = findViewById<View>(R.id.panelAuth)
+        val panelDeploy = findViewById<View>(R.id.panelDeploy)
+        val panelManage = findViewById<View>(R.id.panelManage)
 
-        // [3] Clone Repo
-        btnCloneRepo.setOnClickListener { showCloneRepoDialog() }
+        bottomNav.setOnItemSelectedListener { item ->
+            panelAuth.visibility = View.GONE
+            panelDeploy.visibility = View.GONE
+            panelManage.visibility = View.GONE
 
-        // [4] List Project & Link
-        btnListAndLink.setOnClickListener { fetchAndLinkProjects() }
+            when (item.itemId) {
+                R.id.nav_auth -> {
+                    panelAuth.visibility = View.VISIBLE
+                    true
+                }
+                R.id.nav_deploy -> {
+                    panelDeploy.visibility = View.VISIBLE
+                    true
+                }
+                R.id.nav_manage -> {
+                    panelManage.visibility = View.VISIBLE
+                    true
+                }
+                else -> false
+            }
+        }
+    }
 
-        // [5] Unlink & Reset Cache
-        btnUnlinkClean.setOnClickListener { unlinkAndClean() }
+    private fun setupDrawerNavigation() {
+        val navView = findViewById<NavigationView>(R.id.navView)
+        navView.setNavigationItemSelectedListener { item ->
+            drawerLayout.closeDrawer(GravityCompat.START)
+            when (item.itemId) {
+                R.id.drawer_status -> checkStatus()
+                R.id.drawer_login_browser -> runBrowserLogin()
+                R.id.drawer_login_token -> showTokenInputDialog()
+                R.id.drawer_clone -> showCloneRepoDialog()
+                R.id.drawer_link -> fetchAndLinkProjects()
+                R.id.drawer_unlink -> unlinkAndClean()
+                R.id.drawer_region -> changeRegionDialog()
+                R.id.drawer_domain -> manageDomainDialog()
+                R.id.drawer_tcp -> createTcpProxyDialog()
+                R.id.drawer_env -> manageEnvVarsDialog()
+                R.id.drawer_logs -> runLogs()
+            }
+            true
+        }
+    }
 
-        // [6] File Picker & Deploy
-        btnSelectFile.setOnClickListener { selectZipLauncher.launch("application/zip") }
-        btnDeploy.setOnClickListener { runDeploy() }
+    private fun setupButtonActions() {
+        findViewById<Button>(R.id.btnLoginBrowserless).setOnClickListener { runBrowserLogin() }
+        findViewById<Button>(R.id.btnLoginToken).setOnClickListener { showTokenInputDialog() }
+        findViewById<Button>(R.id.btnLoginCli).setOnClickListener { runBrowserLogin() }
+        findViewById<Button>(R.id.btnCheckStatus).setOnClickListener { checkStatus() }
 
-        // [7] Ubah Region
-        btnChangeRegion.setOnClickListener { changeRegionDialog() }
+        findViewById<Button>(R.id.btnSelectFile).setOnClickListener { selectZipLauncher.launch("application/zip") }
+        findViewById<Button>(R.id.btnDeploy).setOnClickListener { runDeploy() }
+        findViewById<Button>(R.id.btnCloneRepo).setOnClickListener { showCloneRepoDialog() }
+        findViewById<Button>(R.id.btnListAndLink).setOnClickListener { fetchAndLinkProjects() }
+        findViewById<Button>(R.id.btnUnlinkClean).setOnClickListener { unlinkAndClean() }
 
-        // [8] Kelola Public Domain & Target Port
-        btnHttpDomain.setOnClickListener { manageDomainDialog() }
+        findViewById<Button>(R.id.btnChangeRegion).setOnClickListener { changeRegionDialog() }
+        findViewById<Button>(R.id.btnHttpDomain).setOnClickListener { manageDomainDialog() }
+        findViewById<Button>(R.id.btnTcpProxy).setOnClickListener { createTcpProxyDialog() }
+        findViewById<Button>(R.id.btnEnvVars).setOnClickListener { manageEnvVarsDialog() }
+        findViewById<Button>(R.id.btnLogs).setOnClickListener { runLogs() }
+    }
 
-        // [9] Buat TCP Proxy
-        btnTcpProxy.setOnClickListener { createTcpProxyDialog() }
-
-        // [10] Variables
-        btnEnvVars.setOnClickListener { manageEnvVarsDialog() }
-
-        // [11] Logs
-        btnLogs.setOnClickListener { runLogs() }
+    private fun checkAndRequestStoragePermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                try {
+                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
+                    startActivity(intent)
+                } catch (_: Exception) {
+                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                    startActivity(intent)
+                }
+            }
+        } else {
+            val permissions = arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+            val needed = permissions.filter {
+                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            }
+            if (needed.isNotEmpty()) {
+                ActivityCompat.requestPermissions(this, needed.toTypedArray(), 101)
+            }
+        }
     }
 
     private fun getToken(): String? {
@@ -115,6 +190,10 @@ class MainActivity : AppCompatActivity() {
     private fun runCliCommand(vararg args: String, workDir: File = workspaceDir, onFinished: (Int, String) -> Unit) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                if (!railwayBin.canExecute()) {
+                    Runtime.getRuntime().exec("chmod 755 ${railwayBin.absolutePath}").waitFor()
+                }
+
                 val pb = ProcessBuilder(railwayBin.absolutePath, *args)
                 pb.directory(workDir)
                 pb.environment()["HOME"] = filesDir.absolutePath
@@ -164,13 +243,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // [2] Browser Login
     private fun runBrowserLogin() {
         val tvStatus = findViewById<TextView>(R.id.tvStatus)
         tvStatus.text = "Membuat sesi login CLI..."
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                if (!railwayBin.canExecute()) {
+                    Runtime.getRuntime().exec("chmod 755 ${railwayBin.absolutePath}").waitFor()
+                }
+
                 val pb = ProcessBuilder(railwayBin.absolutePath, "login", "--browserless")
                 pb.environment()["HOME"] = filesDir.absolutePath
                 pb.environment()["TMPDIR"] = cacheDir.absolutePath
@@ -230,7 +312,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // [3] Clone Repo
     private fun showCloneRepoDialog() {
         val input = EditText(this).apply { hint = "https://github.com/user/repo.git" }
         AlertDialog.Builder(this)
@@ -248,7 +329,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // [4] List Project & Link
     private fun fetchAndLinkProjects() {
         lifecycleScope.launch {
             val q = """query { me { projects { edges { node { id name } } } workspaces { projects { edges { node { id name } } } } } }"""
@@ -290,7 +370,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // [5] Unlink & Reset Cache
     private fun unlinkAndClean() {
         AlertDialog.Builder(this)
             .setTitle("Unlink & Reset Cache")
@@ -306,7 +385,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // [6] Deploy
     private fun runDeploy() {
         val zip = selectedZipFile ?: return
         val btnDeploy = findViewById<Button>(R.id.btnDeploy)
@@ -320,6 +398,10 @@ class MainActivity : AppCompatActivity() {
                 workspaceDir.deleteRecursively()
                 workspaceDir.mkdirs()
                 unzip(zip, workspaceDir)
+
+                if (!railwayBin.canExecute()) {
+                    Runtime.getRuntime().exec("chmod 755 ${railwayBin.absolutePath}").waitFor()
+                }
 
                 val pb = ProcessBuilder(railwayBin.absolutePath, "up", "--detach")
                 pb.directory(workspaceDir)
@@ -349,7 +431,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // [7] Ubah Region
     private fun changeRegionDialog() {
         lifecycleScope.launch {
             val q = """query { me { workspaces { id name preferredRegion } } }"""
@@ -384,7 +465,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // [8] Kelola Public Domain & Target Port
     private fun manageDomainDialog() {
         val options = arrayOf("1. Generate Domain Baru", "2. Custom Subdomain & Port")
         AlertDialog.Builder(this)
@@ -453,7 +533,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // [9] Buat TCP Proxy
     private fun createTcpProxyDialog() {
         val input = EditText(this).apply { hint = "Port container internal (misal: 8881 atau 22)" }
         AlertDialog.Builder(this)
@@ -499,7 +578,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // [10] Variables
     private fun manageEnvVarsDialog() {
         val options = arrayOf("1. Lihat Semua Variables", "2. Set Variable (KEY=VALUE)")
         AlertDialog.Builder(this)
@@ -529,7 +607,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // [11] Logs
     private fun runLogs() {
         val tvStatus = findViewById<TextView>(R.id.tvStatus)
         tvStatus.text = "Mengambil logs realtime..."
@@ -542,7 +619,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Ekstraksi otomatis dari railway.gz jika binary utuh belum ada
     private fun setupRailwayBinary() {
         railwayBin = File(filesDir, "railway")
         if (!railwayBin.exists() || railwayBin.length() == 0L) {
@@ -562,13 +638,14 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
-                railwayBin.setExecutable(true, false)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-        } else {
-            railwayBin.setExecutable(true, false)
         }
+        try {
+            railwayBin.setExecutable(true, false)
+            Runtime.getRuntime().exec("chmod 755 ${railwayBin.absolutePath}").waitFor()
+        } catch (_: Exception) {}
     }
 
     private fun unzip(zipFile: File, targetDirectory: File) {

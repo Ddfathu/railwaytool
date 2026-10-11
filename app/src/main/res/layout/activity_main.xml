@@ -1,254 +1,252 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0D1117"
-    android:fillViewport="true">
+    android:background="#0D1117">
 
-    <LinearLayout
+    <!-- Konten Utama -->
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="match_parent">
 
-        <TextView
+        <!-- Top App Bar -->
+        <com.google.android.material.appbar.AppBarLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="⚡ RAILWAY TOOL MOBILE"
-            android:textColor="#58A6FF"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginBottom="8dp" />
+            android:background="#161B22">
 
-        <TextView
-            android:id="@+id/tvStatus"
+            <androidx.appcompat.widget.Toolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                app:navigationIcon="@android:drawable/ic_menu_sort_by_size"
+                app:title="Railway Tool"
+                app:titleTextColor="#58A6FF" />
+        </com.google.android.material.appbar.AppBarLayout>
+
+        <!-- Area Konten Tab -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="?attr/actionBarSize"
+            android:layout_marginBottom="56dp"
+            android:padding="16dp">
+
+            <!-- TAB 1: AUTH & STATUS -->
+            <ScrollView
+                android:id="@+id/panelAuth"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="#161B22"
+                        android:fontFamily="monospace"
+                        android:padding="12dp"
+                        android:text="Status: Memeriksa akun..."
+                        android:textColor="#C9D1D9"
+                        android:textSize="12sp"
+                        android:layout_marginBottom="16dp" />
+
+                    <Button
+                        android:id="@+id/btnLoginBrowserless"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🌐 Login via Browser (Browserless)"
+                        android:backgroundTint="#238636"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/btnLoginToken"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🔑 Login Pakai API Token"
+                        android:backgroundTint="#1F6FEB"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/btnLoginCli"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="⚡ Fast Auth Trigger"
+                        android:backgroundTint="#8957E5"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/btnCheckStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🔄 Refresh Status (Whoami)"
+                        android:backgroundTint="#30363D"
+                        android:textColor="#C9D1D9" />
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- TAB 2: DEPLOYMENT -->
+            <ScrollView
+                android:id="@+id/panelDeploy"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <Button
+                        android:id="@+id/btnSelectFile"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="📁 Pilih File Project (.zip)"
+                        android:backgroundTint="#8957E5"
+                        android:textColor="#FFFFFF" />
+
+                    <TextView
+                        android:id="@+id/tvFileStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Belum ada file dipilih"
+                        android:textColor="#8B949E"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:layout_marginTop="6dp"
+                        android:layout_marginBottom="16dp" />
+
+                    <Button
+                        android:id="@+id/btnDeploy"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🚀 Eksekusi Deploy (railway up)"
+                        android:backgroundTint="#238636"
+                        android:textColor="#FFFFFF"
+                        android:enabled="false"
+                        android:layout_marginBottom="16dp" />
+
+                    <Button
+                        android:id="@+id/btnCloneRepo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="📥 Clone Repo GitHub"
+                        android:backgroundTint="#30363D"
+                        android:textColor="#C9D1D9"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/btnListAndLink"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🔗 List &amp; Link Project Akun"
+                        android:backgroundTint="#1F6FEB"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/btnUnlinkClean"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🧹 Unlink &amp; Reset Cache"
+                        android:backgroundTint="#DA3633"
+                        android:textColor="#FFFFFF" />
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- TAB 3: MANAGEMENT -->
+            <ScrollView
+                android:id="@+id/panelManage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <Button
+                        android:id="@+id/btnChangeRegion"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🌍 Default Workspace Region"
+                        android:backgroundTint="#30363D"
+                        android:textColor="#C9D1D9"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/btnHttpDomain"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🌐 Kelola Public Domain &amp; Port"
+                        android:backgroundTint="#30363D"
+                        android:textColor="#C9D1D9"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/btnTcpProxy"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🔌 Buat TCP Proxy (Port Forward)"
+                        android:backgroundTint="#30363D"
+                        android:textColor="#C9D1D9"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/btnEnvVars"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="⚙️ Kelola Environment Variables"
+                        android:backgroundTint="#30363D"
+                        android:textColor="#C9D1D9"
+                        android:layout_marginBottom="10dp" />
+
+                    <Button
+                        android:id="@+id/btnLogs"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="📜 Cek Realtime Logs"
+                        android:backgroundTint="#21262D"
+                        android:textColor="#58A6FF" />
+                </LinearLayout>
+            </ScrollView>
+
+        </FrameLayout>
+
+        <!-- Bottom Navigation Bar -->
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottomNavigation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
             android:background="#161B22"
-            android:padding="12dp"
-            android:text="Status: Memeriksa akun..."
-            android:textColor="#C9D1D9"
-            android:textSize="12sp"
-            android:fontFamily="monospace"
-            android:layout_marginBottom="16dp" />
+            app:itemIconTint="#C9D1D9"
+            app:itemTextColor="#C9D1D9"
+            app:menu="@menu/bottom_nav_menu" />
 
-        <!-- [2] Menu Login -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="── 2. LOGIN AKUN (3 MODE) ──"
-            android:textColor="#8B949E"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp" />
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
+    <!-- Side Navigation Drawer -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/navView"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="#0D1117"
+        app:headerLayout="@layout/nav_header"
+        app:itemIconTint="#8B949E"
+        app:itemTextColor="#C9D1D9"
+        app:menu="@menu/drawer_menu" />
 
-            <Button
-                android:id="@+id/btnLoginBrowserless"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🌐 Browserless"
-                android:backgroundTint="#238636"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:layout_marginEnd="2dp" />
-
-            <Button
-                android:id="@+id/btnLoginToken"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🔑 Input Token"
-                android:backgroundTint="#1F6FEB"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:layout_marginStart="2dp"
-                android:layout_marginEnd="2dp" />
-
-            <Button
-                android:id="@+id/btnLoginCli"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="⚡ Fast Auth"
-                android:backgroundTint="#8957E5"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:layout_marginStart="2dp" />
-        </LinearLayout>
-
-        <!-- [3] & [4] & [5] Git Clone & Link / Unlink -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="── 3, 4, 5. MANAJEMEN PROJECT ──"
-            android:textColor="#8B949E"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp" />
-
-        <Button
-            android:id="@+id/btnCloneRepo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="📥 [3] Clone Repo GitHub"
-            android:backgroundTint="#30363D"
-            android:textColor="#C9D1D9"
-            android:textSize="12sp"
-            android:layout_marginBottom="4dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <Button
-                android:id="@+id/btnListAndLink"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🔗 [4] List &amp; Link Project"
-                android:backgroundTint="#1F6FEB"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:layout_marginEnd="2dp" />
-
-            <Button
-                android:id="@+id/btnUnlinkClean"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🧹 [5] Unlink &amp; Reset"
-                android:backgroundTint="#DA3633"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:layout_marginStart="2dp" />
-        </LinearLayout>
-
-        <!-- [6] Deploy -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="── 6. DEPLOYMENT ──"
-            android:textColor="#8B949E"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp" />
-
-        <Button
-            android:id="@+id/btnSelectFile"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="📁 Pilih File (.zip) untuk Deploy"
-            android:backgroundTint="#8957E5"
-            android:textColor="#FFFFFF"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/tvFileStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Belum ada file dipilih"
-            android:textColor="#8B949E"
-            android:textSize="11sp"
-            android:gravity="center"
-            android:layout_marginBottom="4dp" />
-
-        <Button
-            android:id="@+id/btnDeploy"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🚀 [6] Eksekusi Deploy (railway up)"
-            android:backgroundTint="#238636"
-            android:textColor="#FFFFFF"
-            android:textSize="12sp"
-            android:enabled="false"
-            android:layout_marginBottom="8dp" />
-
-        <!-- [7, 8, 9, 10, 11] Region, Domain, TCP, Env, Logs -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="── 7-11. REGION, DOMAIN &amp; MONITORING ──"
-            android:textColor="#8B949E"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="4dp">
-
-            <Button
-                android:id="@+id/btnChangeRegion"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🌍 [7] Ubah Region"
-                android:backgroundTint="#30363D"
-                android:textColor="#C9D1D9"
-                android:textSize="11sp"
-                android:layout_marginEnd="2dp" />
-
-            <Button
-                android:id="@+id/btnHttpDomain"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🌐 [8] Kelola Domain"
-                android:backgroundTint="#30363D"
-                android:textColor="#C9D1D9"
-                android:textSize="11sp"
-                android:layout_marginStart="2dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="4dp">
-
-            <Button
-                android:id="@+id/btnTcpProxy"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🔌 [9] Buat TCP Proxy"
-                android:backgroundTint="#30363D"
-                android:textColor="#C9D1D9"
-                android:textSize="11sp"
-                android:layout_marginEnd="2dp" />
-
-            <Button
-                android:id="@+id/btnEnvVars"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="⚙️ [10] Variables"
-                android:backgroundTint="#30363D"
-                android:textColor="#C9D1D9"
-                android:textSize="11sp"
-                android:layout_marginStart="2dp" />
-        </LinearLayout>
-
-        <Button
-            android:id="@+id/btnLogs"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="📜 [11] Cek Log Realtime (railway logs)"
-            android:backgroundTint="#21262D"
-            android:textColor="#58A6FF"
-            android:textSize="12sp" />
-
-    </LinearLayout>
-</ScrollView>
+</androidx.drawerlayout.widget.DrawerLayout>

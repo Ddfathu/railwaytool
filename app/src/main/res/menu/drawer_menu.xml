@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="none">
+        <item
+            android:id="@+id/drawer_status"
+            android:icon="@android:drawable/ic_menu_info_details"
+            android:title="Cek Status / Whoami" />
+        <item
+            android:id="@+id/drawer_login_browser"
+            android:icon="@android:drawable/ic_menu_compass"
+            android:title="Login Browserless" />
+        <item
+            android:id="@+id/drawer_login_token"
+            android:icon="@android:drawable/ic_lock_lock"
+            android:title="Input Personal Token" />
+        <item
+            android:id="@+id/drawer_clone"
+            android:icon="@android:drawable/ic_menu_save"
+            android:title="Clone Repo GitHub" />
+        <item
+            android:id="@+id/drawer_link"
+            android:icon="@android:drawable/ic_menu_share"
+            android:title="List &amp; Link Project" />
+        <item
+            android:id="@+id/drawer_unlink"
+            android:icon="@android:drawable/ic_menu_delete"
+            android:title="Unlink &amp; Reset Cache" />
+        <item
+            android:id="@+id/drawer_region"
+            android:icon="@android:drawable/ic_menu_mapmode"
+            android:title="Ubah Default Region" />
+        <item
+            android:id="@+id/drawer_domain"
+            android:icon="@android:drawable/ic_menu_view"
+            android:title="Kelola Public Domain" />
+        <item
+            android:id="@+id/drawer_tcp"
+            android:icon="@android:drawable/ic_menu_set_as"
+            android:title="Buat TCP Proxy" />
+        <item
+            android:id="@+id/drawer_env"
+            android:icon="@android:drawable/ic_menu_preferences"
+            android:title="Environment Variables" />
+        <item
+            android:id="@+id/drawer_logs"
+            android:icon="@android:drawable/ic_menu_recent_history"
+            android:title="Deployment Logs" />
+    </group>
+</menu>
