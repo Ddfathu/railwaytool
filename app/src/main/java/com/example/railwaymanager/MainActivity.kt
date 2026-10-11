@@ -45,7 +45,6 @@ import java.util.zip.ZipInputStream
 class MainActivity : AppCompatActivity() {
 
     private lateinit var libDir: File
-    private lateinit var binDir: File
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var tvTerminal: TextView
@@ -79,13 +78,26 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         checkAndRequestStoragePermissions()
-        setupEnvironmentBinaries()
+        libDir = File(applicationInfo.nativeLibraryDir)
 
         drawerLayout = findViewById(R.id.drawerLayout)
         bottomNav = findViewById(R.id.bottomNavigation)
         tvTerminal = findViewById(R.id.tvTerminalOutput)
         svTerminal = findViewById(R.id.svTerminal)
         etInput = findViewById(R.id.etTerminalInput)
+
+        // Pastikan keyboard langsung muncul saat kolom terminal diklik
+        etInput.setOnClickListener {
+            etInput.requestFocus()
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+            imm.showSoftInput(etInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+        etInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                imm.showSoftInput(etInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         toolbar.setNavigationOnClickListener {
@@ -98,41 +110,6 @@ class MainActivity : AppCompatActivity() {
         setupTerminalActions()
 
         checkStatus()
-    }
-
-    private fun setupEnvironmentBinaries() {
-        libDir = File(applicationInfo.nativeLibraryDir)
-        binDir = File(filesDir, "bin").apply { mkdirs() }
-
-        // Buat wrapper script executable untuk setiap tools
-        val tools = mapOf(
-            "railway" to "librailway.so",
-            "curl" to "libcurl.so",
-            "jq" to "libjq.so",
-            "busybox" to "libbusybox.so"
-        )
-
-        for ((name, soFile) in tools) {
-            val targetSo = File(libDir, soFile)
-            val wrapper = File(binDir, name)
-            if (targetSo.exists() && (!wrapper.exists() || wrapper.length() == 0L)) {
-                wrapper.writeText("#!/system/bin/sh\nexec \"${targetSo.absolutePath}\" \"$@\"\n")
-                wrapper.setExecutable(true, false)
-            }
-        }
-
-        // Siapkan symlink / wrapper busybox untuk utility umum: sh, grep, sed, ls, cat, find
-        val busyboxSo = File(libDir, "libbusybox.so")
-        if (busyboxSo.exists()) {
-            val basicCommands = listOf("sh", "grep", "sed", "awk", "ls", "cat", "find", "mkdir", "rm", "cp", "mv")
-            for (cmd in basicCommands) {
-                val wrapper = File(binDir, cmd)
-                if (!wrapper.exists()) {
-                    wrapper.writeText("#!/system/bin/sh\nexec \"${busyboxSo.absolutePath}\" $cmd \"$@\"\n")
-                    wrapper.setExecutable(true, false)
-                }
-            }
-        }
     }
 
     private fun switchTab(tabId: Int) {
@@ -205,14 +182,14 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnLogs).setOnClickListener { runLogs() }
     }
 
-    // --- TERMINAL ENGINE (TERMUX ENVIRONMENT SIMULATION) ---
+    // --- TERMINAL ENGINE ---
     private fun appendTerminal(text: String) {
         runOnUiThread {
             val clean = text.replace(Regex("\u001B\\[[;?0-9]*[a-zA-Z]"), "")
             tvTerminal.append(clean)
             svTerminal.post { svTerminal.fullScroll(ScrollView.FOCUS_DOWN) }
 
-            // Deteksi kode pairing otomatis
+            // Deteksi pairing code format ABCD-1234
             val match = Regex("""\b([A-Z0-9]{4}-[A-Z0-9]{4})\b""").find(clean)
             if (match != null) {
                 val code = match.value
@@ -221,7 +198,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Kode $code disalin ke clipboard!", Toast.LENGTH_LONG).show()
             }
 
-            // Deteksi link URL resmi aktivasi
+            // Buka browser aktivasi otomatis jika link muncul
             if (clean.contains("railway.com/activate") || (clean.contains("activate") && clean.contains("http"))) {
                 val urlMatch = Regex("""https?://[^\s"'<>]+""").find(clean)
                 val targetUrl = urlMatch?.value ?: "https://railway.com/activate"
@@ -236,23 +213,56 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun configureProcessEnv(env: MutableMap<String, String>) {
-        env["HOME"] = filesDir.absolutePath
-        env["TMPDIR"] = cacheDir.absolutePath
-        env["TERM"] = "xterm-256color"
-        val existingPath = env["PATH"] ?: "/system/bin"
-        env["PATH"] = "${binDir.absolutePath}:${libDir.absolutePath}:$existingPath"
-        env["LD_LIBRARY_PATH"] = "${libDir.absolutePath}:/system/lib64"
+    // Mengonversi input teks perintah ke file executable .so yang valid
+    private fun resolveCommandToArgs(rawCommand: String): List<String> {
+        val parts = rawCommand.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (parts.isEmpty()) return emptyList()
+
+        val cmd = parts[0]
+        val args = parts.drop(1)
+
+        val railwayBin = File(libDir, "librailway.so")
+        val curlBin = File(libDir, "libcurl.so")
+        val jqBin = File(libDir, "libjq.so")
+        val busyboxBin = File(libDir, "libbusybox.so")
+
+        return when (cmd) {
+            "railway" -> listOf(railwayBin.absolutePath) + args
+            "curl" -> listOf(curlBin.absolutePath) + args
+            "jq" -> listOf(jqBin.absolutePath) + args
+            "busybox" -> listOf(busyboxBin.absolutePath) + args
+            else -> {
+                // Jika perintah shell standar (misal: ls, cat, sh, grep), arahkan langsung ke busybox
+                if (busyboxBin.exists()) {
+                    listOf(busyboxBin.absolutePath, cmd) + args
+                } else {
+                    listOf(cmd) + args
+                }
+            }
+        }
     }
 
     private fun runTerminalCommand(commandString: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                val cmdArgs = resolveCommandToArgs(commandString)
+                if (cmdArgs.isEmpty()) return@launch
+
+                val exeFile = File(cmdArgs[0])
+                if (!exeFile.exists() && cmdArgs[0].startsWith("/")) {
+                    appendTerminal("\n[ERROR] File biner ${exeFile.name} tidak ditemukan di native library!\nrailway:~$ ")
+                    return@launch
+                }
+
                 appendTerminal("\nrailway:~$ $commandString\n")
 
-                val pb = ProcessBuilder("/system/bin/sh", "-c", commandString)
+                val pb = ProcessBuilder(cmdArgs)
                 pb.directory(workspaceDir)
-                configureProcessEnv(pb.environment())
+                val env = pb.environment()
+                env["HOME"] = filesDir.absolutePath
+                env["TMPDIR"] = cacheDir.absolutePath
+                env["TERM"] = "xterm-256color"
+                env["LD_LIBRARY_PATH"] = "${libDir.absolutePath}:/system/lib64"
                 pb.redirectErrorStream(true)
 
                 val process = pb.start()
@@ -303,71 +313,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- FITUR LOGIN & MANAJEMEN ---
+    // --- TAB AUTH & BUTTON HANDLERS ---
     private fun runBrowserlessLogin() {
-        val tvStatus = findViewById<TextView>(R.id.tvStatus)
-        tvStatus.text = "Menjalankan Railway CLI..."
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val pb = ProcessBuilder("/system/bin/sh", "-c", "railway login --browserless")
-                pb.directory(workspaceDir)
-                configureProcessEnv(pb.environment())
-                pb.redirectErrorStream(true)
-
-                val process = pb.start()
-                val reader = process.inputStream.bufferedReader()
-                val outputLog = StringBuilder()
-                var openedBrowser = false
-                var extractedCode: String? = null
-
-                while (true) {
-                    val line = reader.readLine() ?: break
-                    outputLog.append(line).append("\n")
-
-                    val codeMatch = Regex("""\b([A-Z0-9]{4}-[A-Z0-9]{4})\b""").find(line)
-                    if (codeMatch != null && extractedCode == null) {
-                        extractedCode = codeMatch.value
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        tvStatus.text = outputLog.toString().trim()
-                    }
-
-                    if (!openedBrowser && (line.contains("railway.com") || line.contains("http"))) {
-                        val urlMatch = Regex("""https?://[^\s"'<>]+""").find(line)
-                        if (urlMatch != null && !urlMatch.value.contains("backboard.railway.com")) {
-                            openedBrowser = true
-                            withContext(Dispatchers.Main) {
-                                if (extractedCode != null) {
-                                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    clipboard.setPrimaryClip(ClipData.newPlainText("Railway Code", extractedCode))
-                                    Toast.makeText(this@MainActivity, "Kode $extractedCode disalin!", Toast.LENGTH_LONG).show()
-                                    tvStatus.text = "🔑 KODE ANDA: $extractedCode\n(Tersalin otomatis)\n\n$outputLog"
-                                }
-                                try {
-                                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlMatch.value)).apply {
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                    })
-                                } catch (_: Exception) {
-                                    CustomTabsIntent.Builder().build().launchUrl(this@MainActivity, Uri.parse(urlMatch.value))
-                                }
-                            }
-                        }
-                    }
-                }
-
-                val exit = process.waitFor()
-                withContext(Dispatchers.Main) {
-                    if (exit == 0) {
-                        Toast.makeText(this@MainActivity, "Login Sukses!", Toast.LENGTH_SHORT).show()
-                        checkStatus()
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) { tvStatus.text = "Error: ${e.message}" }
-            }
-        }
+        bottomNav.selectedItemId = R.id.nav_terminal
+        switchTab(R.id.nav_terminal)
+        runTerminalCommand("railway login --browserless")
     }
 
     private fun runFastAuthLogin() {
@@ -432,32 +382,37 @@ class MainActivity : AppCompatActivity() {
     private fun checkStatus() {
         val tvStatus = findViewById<TextView>(R.id.tvStatus)
         tvStatus.text = "Memeriksa status akun & project..."
-        runCliCommand("railway whoami") { code, out ->
-            if (code == 0 && !out.contains("Unauthorized")) {
-                runCliCommand("railway status") { _, statusOut ->
-                    tvStatus.text = "🟢 Akun: ${out.trim()}\n\n📊 Status:\n${statusOut.trim()}"
-                }
-            } else {
-                tvStatus.text = "🔴 Belum login ke Railway.\nSilakan gunakan salah satu metode login."
-            }
-        }
-    }
+        val railwayBin = File(libDir, "librailway.so")
 
-    private fun runCliCommand(commandString: String, workDir: File = workspaceDir, onFinished: (Int, String) -> Unit) {
+        if (!railwayBin.exists()) {
+            tvStatus.text = "Biner librailway.so belum terpasang."
+            return
+        }
+
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val pb = ProcessBuilder("/system/bin/sh", "-c", commandString)
-                pb.directory(workDir)
-                configureProcessEnv(pb.environment())
+                val pb = ProcessBuilder(railwayBin.absolutePath, "whoami")
+                pb.directory(workspaceDir)
+                val env = pb.environment()
+                env["HOME"] = filesDir.absolutePath
+                env["TMPDIR"] = cacheDir.absolutePath
                 pb.redirectErrorStream(true)
 
                 val process = pb.start()
-                val output = process.inputStream.bufferedReader().readText()
-                val exitCode = process.waitFor()
+                val out = process.inputStream.bufferedReader().readText()
+                val code = process.waitFor()
 
-                withContext(Dispatchers.Main) { onFinished(exitCode, output) }
+                withContext(Dispatchers.Main) {
+                    if (code == 0 && !out.contains("Unauthorized")) {
+                        tvStatus.text = "🟢 Akun: ${out.trim()}"
+                    } else {
+                        tvStatus.text = "🔴 Belum login ke Railway.\nSilakan gunakan menu Login."
+                    }
+                }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { onFinished(-1, e.message ?: "Error") }
+                withContext(Dispatchers.Main) {
+                    tvStatus.text = "Status: ${e.message}"
+                }
             }
         }
     }
@@ -485,12 +440,12 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Clone Repository GitHub")
             .setView(input)
-            .setPositiveButton("Clone") { _, _ ->
+            .setPositiveButton("Buka Terminal") { _, _ ->
                 val url = input.text.toString().trim()
                 if (url.isNotEmpty()) {
-                    runCliCommand("git clone $url", workDir = workspaceDir) { code, out ->
-                        Toast.makeText(this, if (code == 0) "Repo ter-clone!" else "Gagal clone: $out", Toast.LENGTH_LONG).show()
-                    }
+                    bottomNav.selectedItemId = R.id.nav_terminal
+                    switchTab(R.id.nav_terminal)
+                    runTerminalCommand("git clone $url")
                 }
             }
             .setNegativeButton("Batal", null)
@@ -529,10 +484,9 @@ class MainActivity : AppCompatActivity() {
                 .setTitle("Pilih Project untuk Dihubungkan")
                 .setItems(names) { _, idx ->
                     val (pId, pName) = projects[idx]
-                    runCliCommand("railway link --project $pId") { code, _ ->
-                        Toast.makeText(this@MainActivity, if (code == 0) "Terhubung ke $pName!" else "Gagal link", Toast.LENGTH_SHORT).show()
-                        checkStatus()
-                    }
+                    bottomNav.selectedItemId = R.id.nav_terminal
+                    switchTab(R.id.nav_terminal)
+                    runTerminalCommand("railway link --project $pId")
                 }
                 .show()
         }
@@ -543,11 +497,9 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Unlink & Reset Cache")
             .setMessage("Yakin ingin menghapus link dan cache project lokal (.railway)?")
             .setPositiveButton("Ya, Reset") { _, _ ->
-                runCliCommand("railway unlink") { _, _ ->
-                    File(workspaceDir, ".railway").deleteRecursively()
-                    Toast.makeText(this, "Cache link dibersihkan total!", Toast.LENGTH_SHORT).show()
-                    checkStatus()
-                }
+                bottomNav.selectedItemId = R.id.nav_terminal
+                switchTab(R.id.nav_terminal)
+                runTerminalCommand("railway unlink")
             }
             .setNegativeButton("Batal", null)
             .show()
@@ -559,7 +511,7 @@ class MainActivity : AppCompatActivity() {
         val tvStatus = findViewById<TextView>(R.id.tvStatus)
 
         btnDeploy.isEnabled = false
-        tvStatus.text = "Mengekstrak file & deploy (railway up)..."
+        tvStatus.text = "Mengekstrak file & deploy..."
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -567,28 +519,16 @@ class MainActivity : AppCompatActivity() {
                 workspaceDir.mkdirs()
                 unzip(zip, workspaceDir)
 
-                val pb = ProcessBuilder("/system/bin/sh", "-c", "railway up --detach")
-                pb.directory(workspaceDir)
-                configureProcessEnv(pb.environment())
-                pb.redirectErrorStream(true)
-
-                val process = pb.start()
-                val out = process.inputStream.bufferedReader().readText()
-                val code = process.waitFor()
-
                 withContext(Dispatchers.Main) {
                     btnDeploy.isEnabled = true
-                    if (code == 0) {
-                        tvStatus.text = "✓ DEPLOY BERHASIL!\n$out"
-                        Toast.makeText(this@MainActivity, "Deploy Sukses!", Toast.LENGTH_LONG).show()
-                    } else {
-                        tvStatus.text = "Deploy gagal:\n$out"
-                    }
+                    bottomNav.selectedItemId = R.id.nav_terminal
+                    switchTab(R.id.nav_terminal)
+                    runTerminalCommand("railway up --detach")
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     btnDeploy.isEnabled = true
-                    tvStatus.text = "Error deploy: ${e.message}"
+                    tvStatus.text = "Error ekstrak: ${e.message}"
                 }
             }
         }
@@ -634,9 +574,9 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Kelola Domain & Port")
             .setItems(options) { _, which ->
                 if (which == 0) {
-                    runCliCommand("railway domain") { _, out ->
-                        AlertDialog.Builder(this).setTitle("Hasil Generate").setMessage(out).setPositiveButton("OK", null).show()
-                    }
+                    bottomNav.selectedItemId = R.id.nav_terminal
+                    switchTab(R.id.nav_terminal)
+                    runTerminalCommand("railway domain")
                 } else {
                     val input = EditText(this).apply { hint = "subdomain|port (contoh: myapp|8080)" }
                     AlertDialog.Builder(this)
@@ -659,31 +599,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateCustomDomain(subdomain: String, port: Int?) {
-        runCliCommand("railway status --json") { code, out ->
+        val railwayBin = File(libDir, "librailway.so")
+        lifecycleScope.launch(Dispatchers.IO) {
+            val pb = ProcessBuilder(railwayBin.absolutePath, "status", "--json")
+            pb.directory(workspaceDir)
+            pb.environment()["HOME"] = filesDir.absolutePath
+            val process = pb.start()
+            val out = process.inputStream.bufferedReader().readText()
+            val code = process.waitFor()
+
             if (code != 0) {
-                Toast.makeText(this, "Link project terlebih dahulu!", Toast.LENGTH_SHORT).show()
-                return@runCliCommand
+                withContext(Dispatchers.Main) { Toast.makeText(this@MainActivity, "Link project terlebih dahulu!", Toast.LENGTH_SHORT).show() }
+                return@launch
             }
+
             try {
                 val json = JSONObject(out)
                 val envId = json.optJSONObject("environments")?.optJSONArray("edges")?.optJSONObject(0)?.optJSONObject("node")?.getString("id") ?: ""
                 val srvId = json.optJSONObject("services")?.optJSONArray("edges")?.optJSONObject(0)?.optJSONObject("node")?.getString("id") ?: ""
 
-                lifecycleScope.launch {
-                    val mut = """
-                        mutation createDomain(${'$'}input: ServiceDomainCreateInput!) {
-                          serviceDomainCreate(input: ${'$'}input) { id domain targetPort }
-                        }
-                    """.trimIndent()
-                    val vars = JSONObject().apply {
-                        put("input", JSONObject().apply {
-                            put("environmentId", envId)
-                            put("serviceId", srvId)
-                            if (port != null) put("targetPort", port)
-                        })
+                val mut = """
+                    mutation createDomain(${'$'}input: ServiceDomainCreateInput!) {
+                      serviceDomainCreate(input: ${'$'}input) { id domain targetPort }
                     }
-                    val res = postGraphql(mut, vars)
-                    val newDom = res.optJSONObject("data")?.optJSONObject("serviceDomainCreate")?.optString("domain")
+                """.trimIndent()
+                val vars = JSONObject().apply {
+                    put("input", JSONObject().apply {
+                        put("environmentId", envId)
+                        put("serviceId", srvId)
+                        if (port != null) put("targetPort", port)
+                    })
+                }
+                val res = postGraphql(mut, vars)
+                val newDom = res.optJSONObject("data")?.optJSONObject("serviceDomainCreate")?.optString("domain")
+                withContext(Dispatchers.Main) {
                     AlertDialog.Builder(this@MainActivity)
                         .setTitle("Status Domain")
                         .setMessage(if (newDom != null) "Domain aktif:\nhttps://$newDom" else "Gagal: ${res.toString()}")
@@ -691,7 +640,7 @@ class MainActivity : AppCompatActivity() {
                         .show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) { Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show() }
             }
         }
     }
@@ -704,30 +653,38 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Buat") { _, _ ->
                 val p = input.text.toString().trim().toIntOrNull()
                 if (p != null) {
-                    runCliCommand("railway status --json") { code, out ->
-                        if (code != 0) return@runCliCommand
+                    val railwayBin = File(libDir, "librailway.so")
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        val pb = ProcessBuilder(railwayBin.absolutePath, "status", "--json")
+                        pb.directory(workspaceDir)
+                        pb.environment()["HOME"] = filesDir.absolutePath
+                        val process = pb.start()
+                        val out = process.inputStream.bufferedReader().readText()
+                        val code = process.waitFor()
+                        if (code != 0) return@launch
+
                         val json = JSONObject(out)
                         val envId = json.optJSONObject("environments")?.optJSONArray("edges")?.optJSONObject(0)?.optJSONObject("node")?.getString("id") ?: ""
                         val srvId = json.optJSONObject("services")?.optJSONArray("edges")?.optJSONObject(0)?.optJSONObject("node")?.getString("id") ?: ""
 
-                        lifecycleScope.launch {
-                            val mut = """
-                                mutation tcpProxyCreate(${'$'}input: TCPProxyCreateInput!) {
-                                  tcpProxyCreate(input: ${'$'}input) { id domain proxyPort applicationPort }
-                                }
-                            """.trimIndent()
-                            val vars = JSONObject().apply {
-                                put("input", JSONObject().apply {
-                                    put("environmentId", envId)
-                                    put("serviceId", srvId)
-                                    put("applicationPort", p)
-                                })
+                        val mut = """
+                            mutation tcpProxyCreate(${'$'}input: TCPProxyCreateInput!) {
+                              tcpProxyCreate(input: ${'$'}input) { id domain proxyPort applicationPort }
                             }
-                            val res = postGraphql(mut, vars)
-                            val d = res.optJSONObject("data")?.optJSONObject("tcpProxyCreate")
-                            val domain = d?.optString("domain")
-                            val proxyPort = d?.optInt("proxyPort")
+                        """.trimIndent()
+                        val vars = JSONObject().apply {
+                            put("input", JSONObject().apply {
+                                put("environmentId", envId)
+                                put("serviceId", srvId)
+                                put("applicationPort", p)
+                            })
+                        }
+                        val res = postGraphql(mut, vars)
+                        val d = res.optJSONObject("data")?.optJSONObject("tcpProxyCreate")
+                        val domain = d?.optString("domain")
+                        val proxyPort = d?.optInt("proxyPort")
 
+                        withContext(Dispatchers.Main) {
                             AlertDialog.Builder(this@MainActivity)
                                 .setTitle("TCP Proxy Terbuat")
                                 .setMessage(if (domain != null) "Host: $domain\nPublic Port: $proxyPort\nInternal Port: $p" else "Gagal membuat TCP Proxy")
@@ -742,44 +699,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun manageEnvVarsDialog() {
-        val options = arrayOf("1. Lihat Semua Variables", "2. Set Variable (KEY=VALUE)")
-        AlertDialog.Builder(this)
-            .setTitle("Environment Variables")
-            .setItems(options) { _, which ->
-                if (which == 0) {
-                    runCliCommand("railway variables") { _, out ->
-                        AlertDialog.Builder(this).setTitle("Variables").setMessage(out).setPositiveButton("OK", null).show()
-                    }
-                } else {
-                    val input = EditText(this).apply { hint = "PORT=8080 atau TOKEN=abc" }
-                    AlertDialog.Builder(this)
-                        .setTitle("Set Variable")
-                        .setView(input)
-                        .setPositiveButton("Simpan") { _, _ ->
-                            val v = input.text.toString().trim()
-                            if (v.contains("=")) {
-                                runCliCommand("railway variables --set '$v'") { code, out ->
-                                    Toast.makeText(this, if (code == 0) "Variable tersimpan!" else "Gagal: $out", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                        .setNegativeButton("Batal", null)
-                        .show()
-                }
-            }
-            .show()
+        bottomNav.selectedItemId = R.id.nav_terminal
+        switchTab(R.id.nav_terminal)
+        runTerminalCommand("railway variables")
     }
 
     private fun runLogs() {
-        val tvStatus = findViewById<TextView>(R.id.tvStatus)
-        tvStatus.text = "Mengambil logs realtime..."
-        runCliCommand("railway logs --lines 100") { _, out ->
-            AlertDialog.Builder(this)
-                .setTitle("Deployment Logs")
-                .setMessage(if (out.isNotEmpty()) out else "Tidak ada log aktif.")
-                .setPositiveButton("Tutup", null)
-                .show()
-        }
+        bottomNav.selectedItemId = R.id.nav_terminal
+        switchTab(R.id.nav_terminal)
+        runTerminalCommand("railway logs --lines 100")
     }
 
     private fun unzip(zipFile: File, targetDirectory: File) {
