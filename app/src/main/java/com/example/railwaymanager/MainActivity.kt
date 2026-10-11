@@ -264,35 +264,66 @@ class MainActivity : AppCompatActivity() {
                 val process = pb.start()
                 val reader = process.inputStream.bufferedReader()
                 var authUrl: String? = null
+                var pairingCode: String? = null
+                val logBuilder = StringBuilder()
 
                 while (true) {
                     val line = reader.readLine() ?: break
-                    if (line.contains("railway.com") || line.contains("http")) {
-                        val match = """https?://[^\s]+""".toRegex().find(line)
-                        if (match != null) {
+                    logBuilder.append(line).append("\n")
+
+                    // Ambil pairing code format XXXX-XXXX
+                    val codeMatch = """\b([A-Z0-9]{4}-[A-Z0-9]{4})\b""".toRegex().find(line)
+                    if (codeMatch != null && pairingCode == null) {
+                        pairingCode = codeMatch.value
+                    }
+
+                    // Ambil link browser resmi (jangan ambil backboard.railway.com)
+                    if (line.contains("railway.com") && !line.contains("backboard.railway.com")) {
+                        val match = """https?://[^\s"'<>]+""".toRegex().find(line)
+                        if (match != null && authUrl == null) {
                             authUrl = match.value
-                            break
                         }
+                    }
+
+                    // Tampilkan terminal realtime
+                    withContext(Dispatchers.Main) {
+                        tvStatus.text = logBuilder.toString().trim()
+                    }
+
+                    if (authUrl != null && pairingCode != null) {
+                        break
                     }
                 }
 
-                if (authUrl != null) {
-                    withContext(Dispatchers.Main) {
-                        tvStatus.text = "Buka browser untuk klik Authorize..."
-                        CustomTabsIntent.Builder().build().launchUrl(this@MainActivity, Uri.parse(authUrl))
+                // Fallback URL jika CLI hanya memberikan kode
+                val targetUrl = authUrl ?: "https://railway.com/activate"
+
+                withContext(Dispatchers.Main) {
+                    if (pairingCode != null) {
+                        val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Railway Code", pairingCode))
+                        Toast.makeText(this@MainActivity, "Kode $pairingCode telah disalin!", Toast.LENGTH_LONG).show()
+                        tvStatus.text = "🔑 KODE ANDA: $pairingCode\n(Tersalin ke clipboard)\n\nSilakan paste di browser!"
+                    } else {
+                        tvStatus.text = "Membuka browser otorisasi..."
                     }
-                    val exitCode = process.waitFor()
-                    withContext(Dispatchers.Main) {
-                        if (exitCode == 0) {
-                            Toast.makeText(this@MainActivity, "Login Sukses!", Toast.LENGTH_SHORT).show()
-                            checkStatus()
-                        } else {
-                            tvStatus.text = "Otorisasi dibatalkan."
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
+                        startActivity(intent)
+                    } catch (_: Exception) {
+                        CustomTabsIntent.Builder().build().launchUrl(this@MainActivity, Uri.parse(targetUrl))
                     }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        tvStatus.text = "Gagal mengambil link login dari CLI."
+                }
+
+                val exitCode = process.waitFor()
+                withContext(Dispatchers.Main) {
+                    if (exitCode == 0) {
+                        Toast.makeText(this@MainActivity, "Login Sukses!", Toast.LENGTH_SHORT).show()
+                        checkStatus()
+                    } else {
+                        tvStatus.text = "Sesi CLI selesai."
                     }
                 }
             } catch (e: Exception) {
