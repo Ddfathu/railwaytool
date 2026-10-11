@@ -18,7 +18,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        debug {
+            isMinifyEnabled = false
         }
     }
     compileOptions {
@@ -30,7 +32,6 @@ android {
     }
 }
 
-// Bypass task pengecekan metadata AAR via nama task murni (100% valid di Kotlin DSL)
 tasks.matching { it.name.contains("AarMetadata", ignoreCase = true) }.configureEach {
     enabled = false
 }
