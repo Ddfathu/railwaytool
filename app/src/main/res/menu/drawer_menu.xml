@@ -14,6 +14,10 @@
             android:icon="@android:drawable/ic_lock_lock"
             android:title="Input Personal Token" />
         <item
+            android:id="@+id/drawer_terminal"
+            android:icon="@android:drawable/ic_menu_edit"
+            android:title="Buka Terminal Live" />
+        <item
             android:id="@+id/drawer_clone"
             android:icon="@android:drawable/ic_menu_save"
             android:title="Clone Repo GitHub" />
